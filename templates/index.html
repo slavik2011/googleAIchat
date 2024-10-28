@@ -3,53 +3,77 @@
 <head>
     <title>Chat with AI</title>
     <style>
-        /* ... Your CSS ... */
-        /*  Add your CSS styles here for the chat interface */
         body {
+            margin: 0;
             font-family: sans-serif;
         }
+
         .chat-container {
-          height: 500px; /* Adjust as needed */
-          border: 1px solid #ccc;
-          display: flex;
-          flex-direction: column;
+            display: flex;
+            flex-direction: column;
+            height: 100vh;
         }
+
+        .chat-header {
+            background-color: #007bff;
+            color: white;
+            padding: 10px;
+            text-align: center;
+        }
+
         .chat-messages {
-          flex: 1;
-          overflow-y: auto;
-          padding: 10px;
+            flex: 1;
+            padding: 10px;
+            overflow-y: auto; /* Important for scrolling */
+            max-height: calc(100vh - 100px); /* Sets maximum height for scrolling */
         }
+
         .message {
-          margin-bottom: 10px;
-          padding: 8px;
-          border-radius: 5px;
-          max-width: 70%;
+            margin-bottom: 10px;
+            padding: 8px;
+            border-radius: 5px;
+            max-width: 70%;
+            word-break: break-word;
+            white-space: pre-wrap; /* Important for preserving formatting */
         }
+
         .user-message {
-          background-color: #e9ecef;
-          align-self: flex-end; /* Align to the right */
+            background-color: #e9ecef;
+            align-self: flex-end;
         }
+
         .ai-message {
-          background-color: #ADD8E6; /* Light blue */
-          align-self: flex-start; /* Align to the left */
+            background-color: #007bff;
+            color: white;
+            align-self: flex-start;
         }
+
         .chat-input {
-          padding: 10px;
-          border-top: 1px solid #ccc;
+            display: flex;
+            padding: 10px;
+            background-color: #f8f9fa;
         }
+
         #user-input {
-          width: calc(100% - 70px); /* Adjust as needed */
-          padding: 8px;
-          border: 1px solid #ccc;
-          border-radius: 5px;
+            flex: 1;
+            padding: 8px;
+            border: 1px solid #ced4da;
+            border-radius: 5px;
         }
+
         #submit-button {
-          padding: 8px 15px;
-          border: none;
-          background-color: #007bff; /* Blue */
-          color: white;
-          border-radius: 5px;
-          cursor: pointer;
+            background-color: #007bff;
+            color: white;
+            border: none;
+            padding: 8px 15px;
+            margin-left: 10px;
+            border-radius: 5px;
+            cursor: pointer;
+        }
+
+        .error-message {
+            color: red;
+            margin-bottom: 10px;
         }
     </style>
     <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
@@ -61,66 +85,80 @@
             <p>Your UUID: <span id="user-uuid">{{ uuid }}</span></p>
         </div>
         <div class="chat-messages" id="chat-messages">
-        </div> 
+            {% if chat_session %}
+                {% for message in chat_session.history %}
+                    <div class="message {{ 'user-message' if message.role == 'user' else 'ai-message' }}">
+                        {{ message.content.parts[0].text|safe }}
+                    </div>
+                {% endfor %}
+            {% endif %}
+        </div>
         <div class="chat-input">
             {% if error_message %}
                 <div class="error-message">{{ error_message }}</div>
             {% endif %}
             <form id="chat-form" method="POST">
-                <input type="text" id="user-input" name="user-input" placeholder="Type your message..." required>
+                <input type="text" id="user-input" name="user-input" placeholder="Type your message..." >
                 <button type="submit" id="submit-button">Send</button>
             </form>
         </div>
     </div>
-
     <script>
         $(document).ready(function () {
-            const userUuid = $("#user-uuid").text();
-
             $("#chat-form").submit(function (e) {
                 e.preventDefault();
-                const userMessage = $("#user-input").val();
-                displayMessage("user-message", userMessage);
-                $("#user-input").val(""); // Clear input field
-
                 $.ajax({
                     url: "/",
                     type: "POST",
                     data: $(this).serialize(),
                     success: function (response) {
-                        console.log("Server Response:", response);
                         if (response.error) {
-                            displayMessage("ai-message", response.error);
+                            $("#chat-messages").append(`<div class='error-message'>${response.error}</div>`);
                             return;
                         }
-                        displayMessage("ai-message", response.ai_response);
-                        sendObservations(userUuid);
+                        // Clear the form
+                        $("#user-input").val("");
+                        updateChat(response.chat_session);
                     },
                     error: function (xhr, status, error) {
-                        console.error("AJAX Error:", error);
-                        displayMessage("ai-message", "Error: " + error);
+                        var errorMessage = xhr.responseJSON?.error || "An unknown error occurred.";
+                        $("#chat-messages").append(`<div class='error-message'>${errorMessage}</div>`);
                     }
                 });
             });
 
-            function displayMessage(messageClass, messageText) {
-                $("#chat-messages").append(`<div class="message ${messageClass}">${messageText}</div>`);
-                $("#chat-messages").scrollTop($("#chat-messages")[0].scrollHeight);
-            }
-
-            function sendObservations(uuid) {
-                $.ajax({
-                    url: `/get_observations/${uuid}`,
-                    type: "GET",
-                    success: function (response) {
-                        console.log("Observations sent:", response);
-                    },
-                    error: function (xhr, status, error) {
-                        console.error("Error sending observations:", error);
-                    }
+            function updateChat(chatHistory) {
+                const chatMessages = $("#chat-messages");
+                chatMessages.empty(); // Clear previous messages
+                chatHistory.forEach(message => {
+                  let messageClass = message.role === 'user' ? 'user-message' : 'ai-message';
+                  // Extract the text correctly from the parts list
+                  let messageText = message.content.parts[0].text; 
+                  chatMessages.append(`<div class="message ${messageClass}">${messageText}</div>`);
                 });
+
+                chatMessages.scrollTop(chatMessages[0].scrollHeight); // Scroll to bottom
             }
         });
+
+        // Function to send observations to your server
+        function sendObservations(uuid) {
+            $.ajax({
+                url: `/get_observations/${uuid}`,
+                type: "GET",
+                success: function (response) {
+                    console.log("Observations:", response);
+                    // Do something with the observations (e.g., send them to another service)
+                },
+                error: function (xhr, status, error) {
+                    console.error("Error fetching observations:", error);
+                }
+            });
+        }
+
+        // Call sendObservations with the user's UUID
+        const userUuid = $("#user-uuid").text();
+        sendObservations(userUuid);
     </script>
 </body>
 </html>
