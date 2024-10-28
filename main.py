@@ -2,6 +2,7 @@ import os
 import google.generativeai as genai
 from flask import Flask, render_template, request, redirect, url_for, session
 from flask_socketio import SocketIO, emit, join_room, leave_room
+import sys
 
 app = Flask(__name__)
 app.secret_key = os.urandom(24)  # Set a secret key for session management
@@ -67,4 +68,4 @@ def handle_message(data):
         emit('message', {'message': f'An error occurred: {str(e)}'}, room=data['room'])
 
 if __name__ == "__main__":
-    socketio.run(app, debug=True, port=int(os.environ.get("PORT", 5000)), host='0.0.0.0')
+    socketio.run(app, debug=True, port=int(sys.argv[1]), host='0.0.0.0')
