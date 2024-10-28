@@ -1,0 +1,26 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <title>Chat with AI</title>
+</head>
+<body>
+  <h1>Chat with AI</h1>
+
+  <form method="POST">
+    <label for="user_input">Your message:</label>
+    <textarea id="user_input" name="user_input"></textarea>
+    <button type="submit">Send</button>
+  </form>
+
+  <h2>AI Response:</h2>
+  <p>{{ ai_response }}</p>
+
+  <h2>Chat History:</h2>
+  <ul>
+    {% for message in chat_session.history %}
+      <li>{{ message.role }}: {{ message.content }}</li>
+    {% endfor %}
+  </ul>
+
+</body>
+</html>
