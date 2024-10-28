@@ -78,13 +78,12 @@
     <div class="chat-messages">
       {% for message in chat_session.history %}
         <div class="message {% if message.role == 'user' %}user-message{% else %}ai-message{% endif %}">
-          {{ message.content.parts[0].text }}
-        </div>
+          {{ message.content.parts[0].text }} <div>
       {% endfor %}
     </div>
     <div class="chat-input">
       <form method="POST">
-        <input type="text" id="user-input" name="user_input" placeholder="Type your message...">
+        <input type="text" id="user-input" name="user-input" placeholder="Type your message...">
         <button type="submit" id="submit-button">Send</button>
       </form>
     </div>
