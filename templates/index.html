@@ -78,7 +78,8 @@
     <div class="chat-messages">
       {% for message in chat_session.history %}
         <div class="message {% if message.role == 'user' %}user-message{% else %}ai-message{% endif %}">
-          {{ message.content.parts[0].text }} <div>
+          {{ message.content.parts[0].text }} 
+        </div>
       {% endfor %}
     </div>
     <div class="chat-input">
