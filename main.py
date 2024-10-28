@@ -6,7 +6,7 @@ import sys
 app = Flask(__name__)
 
 # Set up your Google Generative AI API key
-genai.configure(api_key=os.environ["GEMINI_API_KEY"])
+genai.configure(api_key=os.environ["AIzaSyDcsgrTsg47uOcp8sX1BB4qJbsfr4iyz-w"])
 
 # Configure the model and chat session
 generation_config = {
