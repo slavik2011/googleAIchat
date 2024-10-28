@@ -1,6 +1,7 @@
 import os
 import google.generativeai as genai
 from flask import Flask, render_template, request
+import sys
 
 app = Flask(__name__)
 
@@ -44,4 +45,4 @@ def index():
     return render_template("index.html")
 
 if __name__ == "__main__":
-  app.run(debug=True)
+  app.run(debug=True, port=int(sys.argv[1]), host='0.0.0.0')
