@@ -40,9 +40,9 @@ def index():
     chat_session.history.append({"role": "user", "content": user_input})
     chat_session.history.append({"role": "assistant", "content": response.text})
 
-    return render_template("index.html", user_input=user_input, ai_response=response.text)
+    return render_template("index.html", user_input=user_input, ai_response=response.text, chat_session=chat_session) 
   else:
-    return render_template("index.html")
+    return render_template("index.html", chat_session=chat_session) 
 
 if __name__ == "__main__":
   app.run(debug=True, port=int(sys.argv[1]), host='0.0.0.0')
