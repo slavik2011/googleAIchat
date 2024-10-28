@@ -1,101 +1,142 @@
 <!DOCTYPE html>
 <html>
 <head>
-  <title>Chat with AI</title>
-  <style>
-    body {
-      margin: 0;
-      font-family: sans-serif;
-    }
+    <title>Chat with AI</title>
+    <style>
+        body {
+            margin: 0;
+            font-family: sans-serif;
+        }
 
-    .chat-container {
-      display: flex;
-      flex-direction: column;
-      height: 100vh;
-    }
+        .chat-container {
+            display: flex;
+            flex-direction: column;
+            height: 100vh;
+        }
 
-    .chat-header {
-      background-color: #007bff;
-      color: white;
-      padding: 10px;
-      text-align: center;
-    }
+        .chat-header {
+            background-color: #007bff;
+            color: white;
+            padding: 10px;
+            text-align: center;
+        }
 
-    .chat-messages {
-      flex: 1;
-      padding: 10px;
-      overflow-y: scroll;
-    }
+        .chat-messages {
+            flex: 1;
+            padding: 10px;
+            overflow-y: auto; /* Important for scrolling */
+            max-height: calc(100vh - 100px); /* Sets maximum height for scrolling */
+        }
 
-    .message {
-      margin-bottom: 10px;
-      padding: 8px;
-      border-radius: 5px;
-      max-width: 70%;
-      word-break: break-word; 
-    }
+        .message {
+            margin-bottom: 10px;
+            padding: 8px;
+            border-radius: 5px;
+            max-width: 70%;
+            word-break: break-word;
+            white-space: pre-wrap; /* Important for preserving formatting */
+        }
 
-    .user-message {
-      background-color: #e9ecef;
-      align-self: flex-end;
-    }
+        .user-message {
+            background-color: #e9ecef;
+            align-self: flex-end;
+        }
 
-    .ai-message {
-      background-color: #007bff;
-      color: white;
-      align-self: flex-start;
-    }
+        .ai-message {
+            background-color: #007bff;
+            color: white;
+            align-self: flex-start;
+        }
 
-    .chat-input {
-      display: flex;
-      padding: 10px;
-      background-color: #f8f9fa;
-    }
+        .chat-input {
+            display: flex;
+            padding: 10px;
+            background-color: #f8f9fa;
+        }
 
-    #user-input {
-      flex: 1;
-      padding: 8px;
-      border: 1px solid #ced4da;
-      border-radius: 5px;
-    }
+        #user-input {
+            flex: 1;
+            padding: 8px;
+            border: 1px solid #ced4da;
+            border-radius: 5px;
+        }
 
-    #submit-button {
-      background-color: #007bff;
-      color: white;
-      border: none;
-      padding: 8px 15px;
-      margin-left: 10px;
-      border-radius: 5px;
-      cursor: pointer;
-    }
-  </style>
+        #submit-button {
+            background-color: #007bff;
+            color: white;
+            border: none;
+            padding: 8px 15px;
+            margin-left: 10px;
+            border-radius: 5px;
+            cursor: pointer;
+        }
+
+        .error-message {
+            color: red;
+            margin-bottom: 10px;
+        }
+    </style>
+    <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
 </head>
 <body>
-  <div class="chat-container">
-    <div class="chat-header">
-      <h1>Chat with AI</h1>
+    <div class="chat-container">
+        <div class="chat-header">
+            <h1>Chat with AI</h1>
+        </div>
+        <div class="chat-messages" id="chat-messages">
+            {% if chat_session %}
+                {% for message in chat_session.history %}
+                    <div class="message {{ 'user-message' if message.role == 'user' else 'ai-message' }}">
+                        {{ message.content.parts[0].text|safe }}
+                    </div>
+                {% endfor %}
+            {% endif %}
+        </div>
+        <div class="chat-input">
+            {% if error_message %}
+                <div class="error-message">{{ error_message }}</div>
+            {% endif %}
+            <form id="chat-form" method="POST">
+                <input type="text" id="user-input" name="user-input" placeholder="Type your message..." required>
+                <button type="submit" id="submit-button">Send</button>
+            </form>
+        </div>
     </div>
-    <div class="chat-messages">
-      {% for message in chat_session.history %}
-  <div class="message {% if message.role == 'user' %}user-message{% else %}ai-message{% endif %}">
-    {% if message.content is defined and message.content.parts is defined %}
-      {% for part in message.content.parts %}
-        {% if part.text is defined %}
-          {{ part.text }}
-        {% endif %}
-      {% endfor %}
-    {% else %}
-      <span>No content available for this message.</span>  <!-- Crucial for error handling -->
-    {% endif %}
-  </div>
-{% endfor %}
-    </div>
-    <div class="chat-input">
-      <form method="POST">
-        <input type="text" id="user-input" name="user-input" placeholder="Type your message...">
-        <button type="submit" id="submit-button">Send</button>
-      </form>
-    </div>
-  </div>
+    <script>
+        $(document).ready(function () {
+            $("#chat-form").submit(function (e) {
+                e.preventDefault();
+                $.ajax({
+                    url: "/",
+                    type: "POST",
+                    data: $(this).serialize(),
+                    success: function (response) {
+                        if (response.error) {
+                            $("#chat-messages").append(`<div class='error-message'>${response.error}</div>`);
+                            return;
+                        }
+                        // Clear the form
+                        $("#user-input").val("");
+                        updateChat(response.chat_session);
+                    },
+                    error: function (xhr, status, error) {
+                        var errorMessage = xhr.responseJSON?.error || "An unknown error occurred.";
+                        $("#chat-messages").append(`<div class='error-message'>${errorMessage}</div>`);
+                    }
+                });
+            });
+
+            function updateChat(chatHistory) {
+                const chatMessages = $("#chat-messages");
+                chatMessages.empty(); // Clear previous messages
+                chatHistory.forEach(message => {
+                  let messageClass = message.role === 'user' ? 'user-message' : 'ai-message';
+                  chatMessages.append(`<div class="message ${messageClass}">${message.content.parts[0].text}</div>`);
+                });
+
+                chatMessages.scrollTop(chatMessages[0].scrollHeight); // Scroll to bottom
+            }
+        });
+    </script>
 </body>
 </html>
