@@ -29,38 +29,34 @@ model = genai.GenerativeModel(
     #system_instruction="Respond in a concise and informative manner.",
 )
 
-chat_session = model.start_chat()  # Initialize the chat session
-
 
 @app.route("/", methods=["GET", "POST"])
 def index():
-    global chat_session
-
     if request.method == "POST":
-        if "user-input" in request.form:
-            user_input = request.form["user-input"].strip()
+        user_input = request.form["user-input"].strip()
 
-            if not user_input:
-                return render_template("index.html", chat_session=chat_session, error_message="Please enter a message.")
+        if not user_input:
+            return render_template("index.html", error_message="Please enter a message.")
 
-            try:
-                content = {"parts": [{"text": user_input}]}
-                response = chat_session.send_message(content)
+        try:
+            # Start a new chat session if there isn't one already
+            chat_session = model.start_chat() if not hasattr(index, 'chat_session') else index.chat_session
 
-                if not response:
-                    return render_template("index.html", chat_session=chat_session, error_message="Error receiving response from the AI model.")
+            content = {"parts": [{"text": user_input}]}
+            response = chat_session.send_message(content)
 
-                # Append the user input and AI response to the chat history
-                chat_session.history.append({"role": "user", "content": content})
-                chat_session.history.append({"role": "assistant", "content": {"parts": [{"text": response.text}]}})
+            if not response:
+                return render_template("index.html", error_message="Error receiving response from the AI model.")
 
-                return render_template("index.html", chat_session=chat_session)
-            except Exception as e:
-                return render_template("index.html", chat_session=chat_session, error_message=f"An error occurred: {str(e)}")
-        else:
-            return render_template("index.html", chat_session=chat_session, error_message="Invalid request.")
+            # Append the user input and AI response to the chat history
+            chat_session.history.append({"role": "user", "content": content})
+            chat_session.history.append({"role": "assistant", "content": {"parts": [{"text": response.text}]}})
+
+            return render_template("index.html", chat_session=chat_session)
+        except Exception as e:
+            return render_template("index.html", error_message=f"An error occurred: {str(e)}")
     else:
-        return render_template("index.html", chat_session=chat_session)
+        return render_template("index.html")
 
 
 if __name__ == "__main__":
