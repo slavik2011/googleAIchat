@@ -98,14 +98,10 @@
 
             const chatMessages = $("#chat-messages");
             const userInput = $("#user-input");
-            let currentRoom = null; // Variable to store the client's room
-
-            socket.on('connect', function() {
-                // Handle room assignment from the server
-                socket.on('room', function(data) {
-                    currentRoom = data.room;
-                    console.log("Joined room:", currentRoom);
-                });
+            let currentRoom = null; // Variable to store the client's roo
+            socket.on('room', function(data) {
+                currentRoom = data.room;
+                console.log("Joined room:", currentRoom);
             });
 
             socket.on('message', function(data) {
