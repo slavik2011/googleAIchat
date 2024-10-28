@@ -30,14 +30,14 @@ chat_session = model.start_chat(
 
 @app.route("/", methods=["GET", "POST"])
 def index():
-  global chat_session  # Access the global chat_session variable
+  global chat_session
 
   if request.method == "POST":
     user_input = request.form["user_input"]
 
     response = chat_session.send_message(user_input)
 
-    # Correctly format the messages in the history
+    # Correctly format messages for the history
     chat_session.history.append({"role": "user", "content": {"parts": [{"text": user_input}]}})
     chat_session.history.append({"role": "assistant", "content": {"parts": [{"text": response.text}]}})
 
