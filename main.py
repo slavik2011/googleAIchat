@@ -1,12 +1,11 @@
 import os
 import google.generativeai as genai
 from flask import Flask, render_template, request, redirect, url_for, session
-import uuid
-import json
-from datetime import datetime
+from flask_socketio import SocketIO, emit, join_room, leave_room
 
 app = Flask(__name__)
 app.secret_key = os.urandom(24)  # Set a secret key for session management
+socketio = SocketIO(app)
 
 # Set up your Google Generative AI API key
 # Replace with your actual API key!  Never hardcode in a repo!
@@ -32,59 +31,40 @@ model = genai.GenerativeModel(
     #system_instruction="Respond in a concise and informative manner.",
 )
 
-# Create a dictionary to store client observations (indexed by UUID)
-client_observations = {}
 
-@app.route("/", methods=["GET", "POST"])
-def index():
-    if 'uuid' not in session:
-        # Generate a unique UUID for the client
-        session['uuid'] = str(uuid.uuid4())
+@socketio.on('connect')
+def handle_connect():
+    print('Client connected')
+    # You might want to store the client's ID or other info here if needed
 
-    if request.method == "POST":
-        user_input = request.form["user-input"].strip()
+@socketio.on('disconnect')
+def handle_disconnect():
+    print('Client disconnected')
 
-        # No need to check if user_input is empty now
+@socketio.on('message')
+def handle_message(data):
+    user_input = data['message']
+    try:
+        # Start a new chat session if there isn't one already
+        chat_session = model.start_chat() if not hasattr(index, 'chat_session') else index.chat_session
 
-        try:
-            # Start a new chat session if there isn't one already
-            chat_session = model.start_chat() if not hasattr(index, 'chat_session') else index.chat_session
+        content = {"parts": [{"text": user_input}]}
+        response = chat_session.send_message(content)
 
-            content = {"parts": [{"text": user_input}]}
-            response = chat_session.send_message(content)
+        if not response:
+            emit('message', {'message': 'Error receiving response from the AI model.'}, room=data['room'])
+            return
 
-            if not response:
-                return render_template("index.html", error_message="Error receiving response from the AI model.")
+        # Extract the response text (access the first part)
+        response_text = response.parts[0].text if response.parts else ""
 
-            # Extract the response text (access the first part)
-            response_text = response.parts[0].text if response.parts else ""
+        # Send the response to the client
+        emit('message', {'message': response_text}, room=data['room'])
 
-            # Append the user input and AI response to the chat history
-            chat_session.history.append({"role": "user", "content": content})
-            chat_session.history.append({"role": "assistant", "content": {"parts": [{"text": response_text}]}})
+        # You can save the conversation data here if needed (e.g., in a database)
 
-            # Save observations to the dictionary
-            if session['uuid'] not in client_observations:
-                client_observations[session['uuid']] = {"history": []}
-            client_observations[session['uuid']]["history"].append({
-                "timestamp": datetime.now().isoformat(),
-                "user_input": user_input,
-                "ai_response": response_text
-            })
-
-            return render_template("index.html", chat_session=chat_session)
-        except Exception as e:
-            return render_template("index.html", error_message=f"An error occurred: {str(e)}")
-    else:
-        return render_template("index.html", uuid=session['uuid'])
-
-@app.route("/get_observations/<uuid>")
-def get_observations(uuid):
-    """Returns the observations for a specific client UUID."""
-    if uuid in client_observations:
-        return json.dumps(client_observations[uuid])
-    else:
-        return "No observations found for this UUID."
+    except Exception as e:
+        emit('message', {'message': f'An error occurred: {str(e)}'}, room=data['room'])
 
 if __name__ == "__main__":
-    app.run(debug=True, port=int(os.environ.get("PORT", 5000)), host='0.0.0.0')
+    socketio.run(app, debug=True, port=int(os.environ.get("PORT", 5000)), host='0.0.0.0')
