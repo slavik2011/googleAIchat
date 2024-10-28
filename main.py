@@ -30,19 +30,20 @@ chat_session = model.start_chat(
 
 @app.route("/", methods=["GET", "POST"])
 def index():
+  global chat_session  # Access the global chat_session variable
+
   if request.method == "POST":
     user_input = request.form["user_input"]
 
-    # Send the message to the AI and get the response
     response = chat_session.send_message(user_input)
 
-    # Update the chat history
-    chat_session.history.append({"role": "user", "content": user_input})
-    chat_session.history.append({"role": "assistant", "content": response.text})
+    # Correctly format the messages in the history
+    chat_session.history.append({"role": "user", "content": {"parts": [{"text": user_input}]}})
+    chat_session.history.append({"role": "assistant", "content": {"parts": [{"text": response.text}]}})
 
-    return render_template("index.html", user_input=user_input, ai_response=response.text, chat_session=chat_session) 
+    return render_template("index.html", user_input=user_input, ai_response=response.text, chat_session=chat_session)
   else:
-    return render_template("index.html", chat_session=chat_session) 
+    return render_template("index.html", chat_session=chat_session)
 
 if __name__ == "__main__":
   app.run(debug=True, port=int(sys.argv[1]), host='0.0.0.0')
