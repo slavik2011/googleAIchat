@@ -77,10 +77,18 @@
     </div>
     <div class="chat-messages">
       {% for message in chat_session.history %}
-        <div class="message {% if message.role == 'user' %}user-message{% else %}ai-message{% endif %}">
-          {{ message.content.parts[0].text }} 
-        </div>
+  <div class="message {% if message.role == 'user' %}user-message{% else %}ai-message{% endif %}">
+    {% if message.content is defined and message.content.parts is defined %}
+      {% for part in message.content.parts %}
+        {% if part.text is defined %}
+          {{ part.text }}
+        {% endif %}
       {% endfor %}
+    {% else %}
+      <span>No content available for this message.</span>  <!-- Crucial for error handling -->
+    {% endif %}
+  </div>
+{% endfor %}
     </div>
     <div class="chat-input">
       <form method="POST">
