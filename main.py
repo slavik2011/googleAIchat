@@ -1,9 +1,12 @@
 import os
 import google.generativeai as genai
-from flask import Flask, render_template, request, redirect, url_for
-import sys
+from flask import Flask, render_template, request, redirect, url_for, session
+import uuid
+import json
+from datetime import datetime
 
 app = Flask(__name__)
+app.secret_key = os.urandom(24)  # Set a secret key for session management
 
 # Set up your Google Generative AI API key
 # Replace with your actual API key!  Never hardcode in a repo!
@@ -29,9 +32,15 @@ model = genai.GenerativeModel(
     #system_instruction="Respond in a concise and informative manner.",
 )
 
+# Create a dictionary to store client observations (indexed by UUID)
+client_observations = {}
 
 @app.route("/", methods=["GET", "POST"])
 def index():
+    if 'uuid' not in session:
+        # Generate a unique UUID for the client
+        session['uuid'] = str(uuid.uuid4())
+
     if request.method == "POST":
         user_input = request.form["user-input"].strip()
 
@@ -55,12 +64,28 @@ def index():
             chat_session.history.append({"role": "user", "content": content})
             chat_session.history.append({"role": "assistant", "content": {"parts": [{"text": response_text}]}})
 
+            # Save observations to the dictionary
+            if session['uuid'] not in client_observations:
+                client_observations[session['uuid']] = []
+            client_observations[session['uuid']].append({
+                "timestamp": datetime.now().isoformat(),
+                "user_input": user_input,
+                "ai_response": response_text
+            })
+
             return render_template("index.html", chat_session=chat_session)
         except Exception as e:
             return render_template("index.html", error_message=f"An error occurred: {str(e)}")
     else:
-        return render_template("index.html")
+        return render_template("index.html", uuid=session['uuid'])
 
+@app.route("/get_observations/<uuid>")
+def get_observations(uuid):
+    """Returns the observations for a specific client UUID."""
+    if uuid in client_observations:
+        return json.dumps(client_observations[uuid])
+    else:
+        return "No observations found for this UUID."
 
 if __name__ == "__main__":
     app.run(debug=True, port=int(os.environ.get("PORT", 5000)), host='0.0.0.0')
