@@ -33,18 +33,28 @@ model = genai.GenerativeModel(
 )
 
 
+@app.route("/")
+def index():
+    return render_template("index.html")  # Render the index.html template
+
 @socketio.on('connect')
 def handle_connect():
-    print('Client connected')
-    # You might want to store the client's ID or other info here if needed
+    # Generate a unique room name for the client
+    client_id = str(uuid.uuid4())
+    print(f'Client connected: {client_id}')
+    join_room(client_id)  # Join the client's unique room
+    emit('room', {'room': client_id})  # Send the client's room ID to the client
 
 @socketio.on('disconnect')
 def handle_disconnect():
-    print('Client disconnected')
+    client_id = request.sid  # Get the client's Socket.IO ID
+    print(f'Client disconnected: {client_id}')
+    leave_room(client_id)  # Leave the client's unique room
 
 @socketio.on('message')
 def handle_message(data):
     user_input = data['message']
+    client_id = data['room']  # Get the client's room ID from the data
     try:
         # Start a new chat session if there isn't one already
         chat_session = model.start_chat() if not hasattr(index, 'chat_session') else index.chat_session
@@ -53,23 +63,19 @@ def handle_message(data):
         response = chat_session.send_message(content)
 
         if not response:
-            emit('message', {'message': 'Error receiving response from the AI model.'}, room=data['room'])
+            emit('message', {'message': 'Error receiving response from the AI model.'}, room=client_id)
             return
 
         # Extract the response text (access the first part)
         response_text = response.parts[0].text if response.parts else ""
 
-        # Send the response to the client
-        emit('message', {'message': response_text}, room=data['room'])
+        # Send the response to the client in their specific room
+        emit('message', {'message': response_text}, room=client_id)
 
         # You can save the conversation data here if needed (e.g., in a database)
 
     except Exception as e:
-        emit('message', {'message': f'An error occurred: {str(e)}'}, room=data['room'])
-
-@app.route("/")
-def index():
-    return render_template("index.html")  # Render the index.html template
+        emit('message', {'message': f'An error occurred: {str(e)}'}, room=client_id)
 
 if __name__ == "__main__":
-    socketio.run(app, debug=True, port=int(sys.argv[1]), host='0.0.0.0', allow_unsafe_werkzeug=True)
+    socketio.run(app, debug=True, port=int(os.environ.get("PORT", 5000)), host='0.0.0.0')
