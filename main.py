@@ -68,4 +68,4 @@ def handle_message(data):
         emit('message', {'message': f'An error occurred: {str(e)}'}, room=data['room'])
 
 if __name__ == "__main__":
-    socketio.run(app, debug=True, port=int(sys.argv[1]), host='0.0.0.0')
+    socketio.run(app, debug=True, port=int(sys.argv[1]), host='0.0.0.0', allow_unsafe_werkzeug=True)
