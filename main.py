@@ -58,7 +58,7 @@ def index():
                 return render_template("index.html", error_message="Error receiving response from the AI model.")
 
             # Extract the response text (access the first part)
-            response_text = response.content.parts[0].text if response.content and response.content.parts else ""
+            response_text = response.parts[0].text if response.parts else ""
 
             # Append the user input and AI response to the chat history
             chat_session.history.append({"role": "user", "content": content})
@@ -66,8 +66,8 @@ def index():
 
             # Save observations to the dictionary
             if session['uuid'] not in client_observations:
-                client_observations[session['uuid']] = []
-            client_observations[session['uuid']].append({
+                client_observations[session['uuid']] = {"history": []}
+            client_observations[session['uuid']]["history"].append({
                 "timestamp": datetime.now().isoformat(),
                 "user_input": user_input,
                 "ai_response": response_text
