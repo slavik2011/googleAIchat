@@ -35,10 +35,12 @@ def index():
   if request.method == "POST":
     user_input = request.form["user_input"]
 
-    response = chat_session.send_message(user_input)
+    # Create Content object for send_message
+    content = {"parts": [{"text": user_input}]}
+    response = chat_session.send_message(content)
 
     # Correctly format messages for the history
-    chat_session.history.append({"role": "user", "content": {"parts": [{"text": user_input}]}})
+    chat_session.history.append({"role": "user", "content": content}) 
     chat_session.history.append({"role": "assistant", "content": {"parts": [{"text": response.text}]}})
 
     return render_template("index.html", user_input=user_input, ai_response=response.text, chat_session=chat_session)
