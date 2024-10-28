@@ -31,7 +31,7 @@ model = genai.GenerativeModel(
     generation_config=generation_config,
     #system_instruction="Respond in a concise and informative manner.",
 )
-
+client_rooms = {}
 
 @app.route("/")
 def index():
@@ -39,22 +39,38 @@ def index():
 
 @socketio.on('connect')
 def handle_connect():
-    # Generate a unique room name for the client
-    client_id = str(uuid.uuid4())
-    print(f'Client connected: {client_id}')
-    join_room(client_id)  # Join the client's unique room
-    emit('room', {'room': client_id})  # Send the client's room ID to the client
+    # Generate a new room ID only if the client doesn't have one already
+    client_id = request.sid
+    if client_id not in client_rooms:
+        new_room_id = str(uuid.uuid4())
+        client_rooms[client_id] = new_room_id
+        join_room(new_room_id)
+        emit('room', {'room': new_room_id}, room=client_id)
+    else:
+        # Client reconnected, use the existing room
+        join_room(client_rooms[client_id])
+        emit('room', {'room': client_rooms[client_id]}, room=client_id)
+
+    print(f"Client connected to room: {client_rooms[client_id]}")
 
 @socketio.on('disconnect')
 def handle_disconnect():
-    client_id = request.sid  # Get the client's Socket.IO ID
-    print(f'Client disconnected: {client_id}')
-    leave_room(client_id)  # Leave the client's unique room
+    client_id = request.sid
+    room_id = client_rooms.pop(client_id, None)  # Remove client from dictionary
+    if room_id:
+        leave_room(room_id)
+        print(f'Client disconnected from room: {room_id}')
 
 @socketio.on('message')
 def handle_message(data):
     user_input = data['message']
-    client_id = data['room']  # Get the client's room ID from the data
+    client_id = request.sid
+    room_id = client_rooms.get(client_id)  # Get room ID from the dictionary
+
+    if not room_id:
+        emit('message', {'message': 'Error: Client not assigned to a room.'}, room=client_id)
+        return
+
     try:
         # Start a new chat session if there isn't one already
         chat_session = model.start_chat() if not hasattr(index, 'chat_session') else index.chat_session
@@ -63,19 +79,19 @@ def handle_message(data):
         response = chat_session.send_message(content)
 
         if not response:
-            emit('message', {'message': 'Error receiving response from the AI model.'}, room=client_id)
+            emit('message', {'message': 'Error receiving response from the AI model.'}, room=room_id)
             return
 
         # Extract the response text (access the first part)
         response_text = response.parts[0].text if response.parts else ""
 
         # Send the response to the client in their specific room
-        emit('message', {'message': response_text}, room=client_id)
+        emit('message', {'message': response_text}, room=room_id)
 
         # You can save the conversation data here if needed (e.g., in a database)
 
     except Exception as e:
-        emit('message', {'message': f'An error occurred: {str(e)}'}, room=client_id)
+        emit('message', {'message': f'An error occurred: {str(e)}'}, room=room_id)
 
 if __name__ == "__main__":
     socketio.run(app, debug=True, port=int(os.environ.get("PORT", 5000)), host='0.0.0.0', allow_unsafe_werkzeug=True)
