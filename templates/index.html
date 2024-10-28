@@ -77,88 +77,44 @@
         }
     </style>
     <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+    <script src="https://cdn.socket.io/4.7.1/socket.io.min.js"></script>
 </head>
 <body>
     <div class="chat-container">
         <div class="chat-header">
             <h1>Chat with AI</h1>
-            <p>Your UUID: <span id="user-uuid">{{ uuid }}</span></p>
         </div>
-        <div class="chat-messages" id="chat-messages">
-            {% if chat_session %}
-                {% for message in chat_session.history %}
-                    <div class="message {{ 'user-message' if message.role == 'user' else 'ai-message' }}">
-                        {{ message.content.parts[0].text|safe }}
-                    </div>
-                {% endfor %}
-            {% endif %}
-        </div>
+        <div class="chat-messages" id="chat-messages"></div>
         <div class="chat-input">
-            {% if error_message %}
-                <div class="error-message">{{ error_message }}</div>
-            {% endif %}
-            <form id="chat-form" method="POST">
-                <input type="text" id="user-input" name="user-input" placeholder="Type your message..." >
+            <form id="chat-form">
+                <input type="text" id="user-input" name="user-input" placeholder="Type your message...">
                 <button type="submit" id="submit-button">Send</button>
             </form>
         </div>
     </div>
     <script>
         $(document).ready(function () {
+            const socket = io(); // Connect to the Socket.IO server
+
+            const chatMessages = $("#chat-messages");
+            const userInput = $("#user-input");
+
+            socket.on('message', function(data) {
+                chatMessages.append(`<div class="message ai-message">${data.message}</div>`);
+                chatMessages.scrollTop(chatMessages[0].scrollHeight);
+            });
+
             $("#chat-form").submit(function (e) {
                 e.preventDefault();
-                $.ajax({
-                    url: "/",
-                    type: "POST",
-                    data: $(this).serialize(),
-                    success: function (response) {
-                        if (response.error) {
-                            $("#chat-messages").append(`<div class='error-message'>${response.error}</div>`);
-                            return;
-                        }
-                        // Clear the form
-                        $("#user-input").val("");
-                        updateChat(response.chat_session);
-                    },
-                    error: function (xhr, status, error) {
-                        var errorMessage = xhr.responseJSON?.error || "An unknown error occurred.";
-                        $("#chat-messages").append(`<div class='error-message'>${errorMessage}</div>`);
-                    }
-                });
-            });
-
-            function updateChat(chatHistory) {
-                const chatMessages = $("#chat-messages");
-                chatMessages.empty(); // Clear previous messages
-                chatHistory.forEach(message => {
-                  let messageClass = message.role === 'user' ? 'user-message' : 'ai-message';
-                  // Extract the text correctly from the parts list
-                  let messageText = message.content.parts[0].text; 
-                  chatMessages.append(`<div class="message ${messageClass}">${messageText}</div>`);
-                });
-
-                chatMessages.scrollTop(chatMessages[0].scrollHeight); // Scroll to bottom
-            }
-        });
-
-        // Function to send observations to your server
-        function sendObservations(uuid) {
-            $.ajax({
-                url: `/get_observations/${uuid}`,
-                type: "GET",
-                success: function (response) {
-                    console.log("Observations:", response);
-                    // Do something with the observations (e.g., send them to another service)
-                },
-                error: function (xhr, status, error) {
-                    console.error("Error fetching observations:", error);
+                const message = userInput.val();
+                if (message) {
+                    socket.emit('message', {'message': message, 'room': 'main'}); // Use 'main' for a single room
+                    userInput.val("");
+                    chatMessages.append(`<div class="message user-message">${message}</div>`);
+                    chatMessages.scrollTop(chatMessages[0].scrollHeight);
                 }
             });
-        }
-
-        // Call sendObservations with the user's UUID
-        const userUuid = $("#user-uuid").text();
-        sendObservations(userUuid);
+        });
     </script>
 </body>
 </html>
