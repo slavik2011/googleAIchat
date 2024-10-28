@@ -105,28 +105,60 @@
     </div>
     <script>
         $(document).ready(function () {
-            // ... (Your existing JavaScript from previous example) ...
-
-            // Function to send observations to your server
-            function sendObservations(uuid) {
+            $("#chat-form").submit(function (e) {
+                e.preventDefault();
                 $.ajax({
-                    url: `/get_observations/${uuid}`,
-                    type: "GET",
+                    url: "/",
+                    type: "POST",
+                    data: $(this).serialize(),
                     success: function (response) {
-                        console.log("Observations:", response);
-                        // Do something with the observations (e.g., send them to another service)
+                        if (response.error) {
+                            $("#chat-messages").append(`<div class='error-message'>${response.error}</div>`);
+                            return;
+                        }
+                        // Clear the form
+                        $("#user-input").val("");
+                        updateChat(response.chat_session);
                     },
                     error: function (xhr, status, error) {
-                        console.error("Error fetching observations:", error);
+                        var errorMessage = xhr.responseJSON?.error || "An unknown error occurred.";
+                        $("#chat-messages").append(`<div class='error-message'>${errorMessage}</div>`);
                     }
                 });
-            }
+            });
 
-            // Call sendObservations with the user's UUID
-            const userUuid = $("#user-uuid").text();
-            sendObservations(userUuid);
+            function updateChat(chatHistory) {
+                const chatMessages = $("#chat-messages");
+                chatMessages.empty(); // Clear previous messages
+                chatHistory.forEach(message => {
+                  let messageClass = message.role === 'user' ? 'user-message' : 'ai-message';
+                  // Extract the text correctly from the parts list
+                  let messageText = message.content.parts[0].text; // Corrected line
+                  chatMessages.append(`<div class="message ${messageClass}">${messageText}</div>`);
+                });
+
+                chatMessages.scrollTop(chatMessages[0].scrollHeight); // Scroll to bottom
+            }
         });
+
+        // Function to send observations to your server
+        function sendObservations(uuid) {
+            $.ajax({
+                url: `/get_observations/${uuid}`,
+                type: "GET",
+                success: function (response) {
+                    console.log("Observations:", response);
+                    // Do something with the observations (e.g., send them to another service)
+                },
+                error: function (xhr, status, error) {
+                    console.error("Error fetching observations:", error);
+                }
+            });
+        }
+
+        // Call sendObservations with the user's UUID
+        const userUuid = $("#user-uuid").text();
+        sendObservations(userUuid);
     </script>
 </body>
-
 </html>
