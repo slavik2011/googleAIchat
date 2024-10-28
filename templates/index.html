@@ -82,6 +82,7 @@
     <div class="chat-container">
         <div class="chat-header">
             <h1>Chat with AI</h1>
+            <p>Your UUID: <span id="user-uuid">{{ uuid }}</span></p>
         </div>
         <div class="chat-messages" id="chat-messages">
             {% if chat_session %}
@@ -104,39 +105,28 @@
     </div>
     <script>
         $(document).ready(function () {
-            $("#chat-form").submit(function (e) {
-                e.preventDefault();
+            // ... (Your existing JavaScript from previous example) ...
+
+            // Function to send observations to your server
+            function sendObservations(uuid) {
                 $.ajax({
-                    url: "/",
-                    type: "POST",
-                    data: $(this).serialize(),
+                    url: `/get_observations/${uuid}`,
+                    type: "GET",
                     success: function (response) {
-                        if (response.error) {
-                            $("#chat-messages").append(`<div class='error-message'>${response.error}</div>`);
-                            return;
-                        }
-                        // Clear the form
-                        $("#user-input").val("");
-                        updateChat(response.chat_session);
+                        console.log("Observations:", response);
+                        // Do something with the observations (e.g., send them to another service)
                     },
                     error: function (xhr, status, error) {
-                        var errorMessage = xhr.responseJSON?.error || "An unknown error occurred.";
-                        $("#chat-messages").append(`<div class='error-message'>${errorMessage}</div>`);
+                        console.error("Error fetching observations:", error);
                     }
                 });
-            });
-
-            function updateChat(chatHistory) {
-                const chatMessages = $("#chat-messages");
-                chatMessages.empty(); // Clear previous messages
-                chatHistory.forEach(message => {
-                  let messageClass = message.role === 'user' ? 'user-message' : 'ai-message';
-                  chatMessages.append(`<div class="message ${messageClass}">${message.content.parts[0].text}</div>`);
-                });
-
-                chatMessages.scrollTop(chatMessages[0].scrollHeight); // Scroll to bottom
             }
+
+            // Call sendObservations with the user's UUID
+            const userUuid = $("#user-uuid").text();
+            sendObservations(userUuid);
         });
     </script>
 </body>
+
 </html>
