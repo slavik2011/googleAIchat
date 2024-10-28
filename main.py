@@ -1,53 +1,69 @@
 import os
 import google.generativeai as genai
-from flask import Flask, render_template, request, jsonify, session
+from flask import Flask, render_template, request, redirect, url_for, session
 import uuid
 import json
 from datetime import datetime
 
 app = Flask(__name__)
-app.secret_key = os.urandom(24)
+app.secret_key = os.urandom(24)  # Set a secret key for session management
 
-# Replace with your actual API key!
-API_KEY = "AIzaSyDcsgrTsg47uOcp8sX1BB4qJbsfr4iyz-w"  # Replace with your actual API key!!!
+# Set up your Google Generative AI API key
+# Replace with your actual API key!  Never hardcode in a repo!
+API_KEY = 'AIzaSyDcsgrTsg47uOcp8sX1BB4qJbsfr4iyz-w'
 if not API_KEY:
     print("Error: GOOGLE_AI_API_KEY environment variable not set.")
-    exit(1)
+    sys.exit(1)  # Exit with an error code
 
 genai.configure(api_key=API_KEY)
 
+# Configuration for the model (you might want to adjust these)
 generation_config = {
-    "temperature": 0.7,
-    "max_output_tokens": 512,
+    "temperature": 0.7,  # Adjust for desired creativity
+    "top_p": 0.95,
+    "top_k": 64,
+    "max_output_tokens": 512,  # Adjust as needed
+    "response_mime_type": "text/plain",
 }
 
 model = genai.GenerativeModel(
-    model_name="gemini-pro", 
+    model_name="gemini-pro",  # Replace with your desired model
     generation_config=generation_config,
+    #system_instruction="Respond in a concise and informative manner.",
 )
 
+# Create a dictionary to store client observations (indexed by UUID)
 client_observations = {}
 
 @app.route("/", methods=["GET", "POST"])
 def index():
     if 'uuid' not in session:
+        # Generate a unique UUID for the client
         session['uuid'] = str(uuid.uuid4())
 
     if request.method == "POST":
-        user_input = request.form.get("user-input", "").strip()
-        if not user_input:
-            return jsonify({"error": "Please enter a message."})
+        user_input = request.form["user-input"].strip()
+
+        # No need to check if user_input is empty now
 
         try:
+            # Start a new chat session if there isn't one already
             chat_session = model.start_chat() if not hasattr(index, 'chat_session') else index.chat_session
-            response = chat_session.send_message({"parts": [{"text": user_input}]})
 
-            if response and response.parts:  # Explicitly Check for valid response
-                response_text = response.parts[0].text
-            else:
-                response_text = "Error getting AI response"  # Provide default message if no response parts
+            content = {"parts": [{"text": user_input}]}
+            response = chat_session.send_message(content)
 
+            if not response:
+                return render_template("index.html", error_message="Error receiving response from the AI model.")
 
+            # Extract the response text (access the first part)
+            response_text = response.parts[0].text if response.parts else ""
+
+            # Append the user input and AI response to the chat history
+            chat_session.history.append({"role": "user", "content": content})
+            chat_session.history.append({"role": "assistant", "content": {"parts": [{"text": response_text}]}})
+
+            # Save observations to the dictionary
             if session['uuid'] not in client_observations:
                 client_observations[session['uuid']] = {"history": []}
             client_observations[session['uuid']]["history"].append({
@@ -55,24 +71,20 @@ def index():
                 "user_input": user_input,
                 "ai_response": response_text
             })
-            return jsonify({"ai_response": response_text})  # Return AI response as JSON
 
+            return render_template("index.html", chat_session=chat_session)
         except Exception as e:
-            print(f"An error occurred: {e}") # Print error to the console for debugging
-            return jsonify({"error": str(e)})
-
-    return render_template("index.html", uuid=session['uuid'])
-
+            return render_template("index.html", error_message=f"An error occurred: {str(e)}")
+    else:
+        return render_template("index.html", uuid=session['uuid'])
 
 @app.route("/get_observations/<uuid>")
 def get_observations(uuid):
+    """Returns the observations for a specific client UUID."""
     if uuid in client_observations:
-         # Store observations (example - replace with your storage method)
-        with open(f"observations_{uuid}.json", "w") as f: 
-            json.dump(client_observations[uuid], f)
-        return jsonify(client_observations[uuid])
-    return "No observations found for this UUID."
-
+        return json.dumps(client_observations[uuid])
+    else:
+        return "No observations found for this UUID."
 
 if __name__ == "__main__":
     app.run(debug=True, port=int(os.environ.get("PORT", 5000)), host='0.0.0.0')
