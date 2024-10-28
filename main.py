@@ -67,5 +67,9 @@ def handle_message(data):
     except Exception as e:
         emit('message', {'message': f'An error occurred: {str(e)}'}, room=data['room'])
 
+@app.route("/")
+def index():
+    return render_template("index.html")  # Render the index.html template
+
 if __name__ == "__main__":
     socketio.run(app, debug=True, port=int(sys.argv[1]), host='0.0.0.0', allow_unsafe_werkzeug=True)
