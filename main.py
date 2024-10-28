@@ -9,7 +9,7 @@ app = Flask(__name__)
 app.secret_key = os.urandom(24)
 
 # Replace with your actual API key!
-API_KEY = "YOUR_API_KEY"  # Replace with your actual API key!!!
+API_KEY = "AIzaSyDcsgrTsg47uOcp8sX1BB4qJbsfr4iyz-w"  # Replace with your actual API key!!!
 if not API_KEY:
     print("Error: GOOGLE_AI_API_KEY environment variable not set.")
     exit(1)
