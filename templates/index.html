@@ -98,6 +98,15 @@
 
             const chatMessages = $("#chat-messages");
             const userInput = $("#user-input");
+            let currentRoom = null; // Variable to store the client's room
+
+            socket.on('connect', function() {
+                // Handle room assignment from the server
+                socket.on('room', function(data) {
+                    currentRoom = data.room;
+                    console.log("Joined room:", currentRoom);
+                });
+            });
 
             socket.on('message', function(data) {
                 chatMessages.append(`<div class="message ai-message">${data.message}</div>`);
@@ -108,7 +117,8 @@
                 e.preventDefault();
                 const message = userInput.val();
                 if (message) {
-                    socket.emit('message', {'message': message, 'room': 'main'}); // Use 'main' for a single room
+                    // Send the message to the client's room
+                    socket.emit('message', {'message': message, 'room': currentRoom}); 
                     userInput.val("");
                     chatMessages.append(`<div class="message user-message">${message}</div>`);
                     chatMessages.scrollTop(chatMessages[0].scrollHeight);
