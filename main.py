@@ -7,7 +7,7 @@ app = Flask(__name__)
 
 # Set up your Google Generative AI API key
 # Replace with your actual API key!  Never hardcode in a repo!
-API_KEY = os.environ.get("AIzaSyDcsgrTsg47uOcp8sX1BB4qJbsfr4iyz-w")
+API_KEY = 'AIzaSyDcsgrTsg47uOcp8sX1BB4qJbsfr4iyz-w'
 if not API_KEY:
     print("Error: GOOGLE_AI_API_KEY environment variable not set.")
     sys.exit(1)  # Exit with an error code
