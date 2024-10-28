@@ -2,6 +2,7 @@ import os
 import google.generativeai as genai
 from flask import Flask, render_template, request, redirect, url_for, session
 from flask_socketio import SocketIO, emit, join_room, leave_room
+import uuid
 import sys
 
 app = Flask(__name__)
@@ -10,7 +11,7 @@ socketio = SocketIO(app)
 
 # Set up your Google Generative AI API key
 # Replace with your actual API key!  Never hardcode in a repo!
-API_KEY = 'AIzaSyDcsgrTsg47uOcp8sX1BB4qJbsfr4iyz-w'
+API_KEY = 'AIzaSyDcsgrTsg47uOcp8sX1BB4qJbsfr4iyz-w' 
 if not API_KEY:
     print("Error: GOOGLE_AI_API_KEY environment variable not set.")
     sys.exit(1)  # Exit with an error code
@@ -31,7 +32,11 @@ model = genai.GenerativeModel(
     generation_config=generation_config,
     #system_instruction="Respond in a concise and informative manner.",
 )
+
+# Dictionary to store client rooms
 client_rooms = {}
+# Dictionary to store chat sessions (one per room)
+chat_sessions = {} 
 
 @app.route("/")
 def index():
@@ -46,6 +51,9 @@ def handle_connect():
         client_rooms[client_id] = new_room_id
         join_room(new_room_id)
         emit('room', {'room': new_room_id}, room=client_id)
+
+        # Create a new chat session for the room
+        chat_sessions[new_room_id] = model.start_chat() 
     else:
         # Client reconnected, use the existing room
         join_room(client_rooms[client_id])
@@ -72,8 +80,11 @@ def handle_message(data):
         return
 
     try:
-        # Start a new chat session if there isn't one already
-        chat_session = model.start_chat() if not hasattr(index, 'chat_session') else index.chat_session
+        # Get the chat session for the room
+        chat_session = chat_sessions.get(room_id) 
+        if not chat_session:
+            emit('message', {'message': 'Error: No chat session found for this room.'}, room=client_id)
+            return
 
         content = {"parts": [{"text": user_input}]}
         response = chat_session.send_message(content)
