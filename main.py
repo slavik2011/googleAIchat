@@ -48,8 +48,8 @@ def index():
             if not response:
                 return render_template("index.html", error_message="Error receiving response from the AI model.")
 
-            # Extract the response text 
-            response_text = response.content.parts[0].text
+            # Extract the response text (access the first part)
+            response_text = response.content.parts[0].text if response.content and response.content.parts else ""
 
             # Append the user input and AI response to the chat history
             chat_session.history.append({"role": "user", "content": content})
