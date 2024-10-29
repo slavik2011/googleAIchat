@@ -137,15 +137,17 @@
         </div>
     </div>
 
+    <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
+    <script src="https://cdn.socket.io/4.7.1/socket.io.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/dompurify/3.0.5/purify.min.js"></script>
+
     <script>
         $(document).ready(function () {
             const socket = io();
             const chatMessages = $("#chat-messages");
             const userInput = $("#user-input");
             let currentRoom = null;
-            let typingTimer;
-            const doneTypingInterval = 500;
-            let isTyping = false;
 
             socket.on('room', function (data) {
                 currentRoom = data.room;
@@ -153,22 +155,25 @@
             });
 
             socket.on('message', function (data) {
-                if (!isTyping) {
-                    chatMessages.append('<div class="message ai-message typing-indicator">AI is typing...</div>');
-                    chatMessages.scrollTop(chatMessages[0].scrollHeight);
-                    isTyping = true;
-                }
+                let sanitizedMessage = DOMPurify.sanitize(data.message);
+                const htmlMessage = marked.parse(sanitizedMessage);
 
-                clearTimeout(typingTimer);
-                typingTimer = setTimeout(function () {
-                    $('.typing-indicator').remove();
+                let currentText = "";
+                let index = 0;
+                const messageElement = $('<div class="message ai-message"></div>');
+                chatMessages.append(messageElement);
+                chatMessages.scrollTop(chatMessages[0].scrollHeight);
 
-                    let sanitizedMessage = DOMPurify.sanitize(data.message);
-                    const htmlMessage = marked.parse(sanitizedMessage);
-                    chatMessages.append(`<div class="message ai-message">${htmlMessage}</div>`);
+                const typingInterval = setInterval(function () {
+                    currentText += htmlMessage[index];
+                    messageElement.html(currentText);
                     chatMessages.scrollTop(chatMessages[0].scrollHeight);
-                    isTyping = false;
-                }, doneTypingInterval);
+
+                    index++;
+                    if (index >= htmlMessage.length) {
+                        clearInterval(typingInterval);
+                    }
+                }, 30); // Adjust typing speed here
             });
 
             $("#chat-form").submit(function (e) {
