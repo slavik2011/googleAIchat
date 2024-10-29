@@ -134,11 +134,20 @@
         });
 
         socket.on('message', function(data) {
+            // 1. Sanitize the message:
+            let sanitizedMessage = $("<div>").text(data.message).html();
 
-            // Sanitize server messages to prevent XSS
-            const sanitizedMessage = $("<div>").text(data.message).html(); 
+            // 2. Allow only specific tags (whitelist):
+            const allowedTags = ["b", "i", "u", "strong", "em"]; 
+            sanitizedMessage = sanitizedMessage.replace(/<(\/?)([a-z]+)>/gi, function(match, slash, tag) {
+                if (allowedTags.includes(tag.toLowerCase())) {
+                    return "<" + slash + tag + ">";
+                }
+                return ""; 
+            });
+
+            // 3. Add the message to the chat:
             chatMessages.append(`<div class="message ai-message">${sanitizedMessage}</div>`);
-
             chatMessages.scrollTop(chatMessages[0].scrollHeight);
         });
 
@@ -148,7 +157,7 @@
             if (message) {
                 socket.emit('message', {'message': message, 'room': currentRoom});
                 userInput.val("");
-                chatMessages.append(`<div class="message user-message">${message}</div>`); // No sanitization needed for user input on display
+                chatMessages.append(`<div class="message user-message">${message}</div>`);
                 chatMessages.scrollTop(chatMessages[0].scrollHeight);
             }
         });
