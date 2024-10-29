@@ -23,6 +23,8 @@
             overflow: hidden;
         }
 
+        .chat-form
+
         .chat-header {
             background-color: #007bff;
             color: white;
@@ -63,7 +65,6 @@
 
         .chat-input {
             display: flex;
-            width: 100%;
             box-sizing: border-box;
             overflow-y: auto;
             background-color: #ffffff;
@@ -83,7 +84,7 @@
             min-height: 50px;
             resize: vertical;
             overflow: auto;
-            width: 100%
+            width: 91%
         }
 
         #submit-button {
@@ -134,7 +135,7 @@
         </div>
         <div class="chat-messages" id="chat-messages"></div>
         <div class="chat-input">
-            <form id="chat-form">
+            <form id="chat-form" style="width: 100%;">
                 <input type="text" id="user-input" name="user-input" placeholder="Type your message..." autocomplete="off">
                 <button type="submit" id="submit-button">Send</button>
             </form>
