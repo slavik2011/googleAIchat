@@ -50,7 +50,7 @@ def generate_image(prompt):
     client = image_generator_v1.ImageGeneratorClient()
 
     # Set the parent (the project and location)
-    parent = f"projects/{random.randint(1, 10000)}/locations/{random.randint(1, 10000}"
+    parent = f"projects/{random.randint(1, 10000)}/locations/{random.randint(1, 10000)}"
 
     # Set the image context
     image_context = image_generator_v1.ImageContext(
