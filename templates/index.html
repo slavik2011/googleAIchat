@@ -100,10 +100,10 @@
             margin-bottom: 10px;
         }
     </style>
-
-
     <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>  <!-- Marked.js -->
     <script src="https://cdn.socket.io/4.7.1/socket.io.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/dompurify/3.0.5/purify.min.js"></script> <!-- DOMPurify -->
 
 </head>
 <body>
@@ -127,27 +127,22 @@
         const userInput = $("#user-input");
         let currentRoom = null;
 
-
         socket.on('room', function(data) {
             currentRoom = data.room;
             console.log("Joined room:", currentRoom);
         });
 
         socket.on('message', function(data) {
-            // 1. Sanitize the message:
-            let sanitizedMessage = $("<div>").text(data.message).html();
+            // 1. Sanitize (CRUCIAL for security):
+             let sanitizedMessage = DOMPurify.sanitize(data.message);
 
-            // 2. Allow only specific tags (whitelist):
-            const allowedTags = ["b", "i", "u", "strong", "em"]; 
-            sanitizedMessage = sanitizedMessage.replace(/<(\/?)([a-z]+)>/gi, function(match, slash, tag) {
-                if (allowedTags.includes(tag.toLowerCase())) {
-                    return "<" + slash + tag + ">";
-                }
-                return ""; 
-            });
 
-            // 3. Add the message to the chat:
-            chatMessages.append(`<div class="message ai-message">${sanitizedMessage}</div>`);
+            // 2. Parse the Markdown to HTML:
+            const htmlMessage = marked.parse(sanitizedMessage);
+
+
+            // 3. Add the HTML to the chat:
+            chatMessages.append(`<div class="message ai-message">${htmlMessage}</div>`);
             chatMessages.scrollTop(chatMessages[0].scrollHeight);
         });
 
@@ -157,7 +152,9 @@
             if (message) {
                 socket.emit('message', {'message': message, 'room': currentRoom});
                 userInput.val("");
-                chatMessages.append(`<div class="message user-message">${message}</div>`);
+
+                // Display user's message (no need to parse Markdown for user input):
+                chatMessages.append(`<div class="message user-message">${message}</div>`); // User message (no markdown parsing)
                 chatMessages.scrollTop(chatMessages[0].scrollHeight);
             }
         });
