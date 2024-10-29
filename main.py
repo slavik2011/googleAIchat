@@ -4,8 +4,6 @@ from flask import Flask, render_template, request, redirect, url_for, session
 from flask_socketio import SocketIO, emit, join_room, leave_room
 import uuid
 import sys
-import random
-import image_generator_v1
 
 app = Flask(__name__)
 app.secret_key = os.urandom(128)  # Set a secret key for session management
@@ -34,41 +32,6 @@ model = genai.GenerativeModel(
     generation_config=generation_config,
     #system_instruction="Respond in a concise and informative manner.",
 )
-
-
-def generate_image(prompt):
-    """Generates an image from the provided prompt.
-
-    Args:
-        prompt (str): The prompt to use for generating the image.
-
-    Returns:
-        An `Image` object containing the generated image.
-    """
-
-    # Create a client
-    client = image_generator_v1.ImageGeneratorClient()
-
-    # Set the parent (the project and location)
-    parent = f"projects/{random.randint(1, 10000)}/locations/{random.randint(1, 10000)}"
-
-    # Set the image context
-    image_context = image_generator_v1.ImageContext(
-        context=["realistic"]
-    )
-
-    # Set the request
-    request = image_generator_v1.GenerateImageRequest(
-        parent=parent,
-        image_context=image_context,
-        prompt=prompt
-    )
-
-    # Generate the image
-    response = client.generate_image(request)
-
-    # Return the generated image
-    return response.output_image_uri
 
 # Dictionary to store client rooms
 client_rooms = {}
@@ -118,37 +81,25 @@ def handle_message(data):
 
     try:
         # Get the chat session for the room
-        chat_session = chat_sessions.get(room_id)
+        chat_session = chat_sessions.get(room_id) 
         if not chat_session:
             emit('message', {'message': 'Error: No chat session found for this room. Try refreshing the page'}, room=client_id)
             return
 
-        if user_input.startswith("image: "):
-            # Extract the prompt from the user input
-            prompt = user_input[7:]
+        content = {"parts": [{"text": user_input}]}
+        response = chat_session.send_message(content)
 
-            # Generate the image using your preferred method (e.g., using the `image-generator-api` library)
-            image = generate_image(prompt)
+        if not response:
+            emit('message', {'message': 'Error receiving response from the AI model. Ask website developer to fix that'}, room=room_id)
+            return
 
-            # Send the generated image to the client
-            emit('image', {'image_uri': image.uri}, room=room_id)
+        # Extract the response text (access the first part)
+        response_text = response.parts[0].text if response.parts else ""
 
-        else:
-            # Handle text-based messages as before
-            content = {"parts": [{"text": user_input}]}
-            response = chat_session.send_message(content)
+        # Send the response to the client in their specific room
+        emit('message', {'message': response_text}, room=room_id)
 
-            if not response:
-                emit('message', {'message': 'Error receiving response from the AI model. Ask website developer to fix that'}, room=room_id)
-                return
-
-            # Extract the response text (access the first part)
-            response_text = response.parts[0].text if response.parts else ""
-
-            # Send the response to the client in their specific room
-            emit('message', {'message': response_text}, room=room_id)
-
-            # You can save the conversation data here if needed (e.g., in a database)
+        # You can save the conversation data here if needed (e.g., in a database)
 
     except Exception as e:
         emit('message', {'message': f'An error occurred: {str(e)}'}, room=room_id)
