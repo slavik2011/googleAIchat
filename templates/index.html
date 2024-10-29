@@ -82,6 +82,7 @@
             min-height: 50px;
             resize: vertical;
             overflow: auto;
+            max-height: 200px;
             width: 91%
         }
 
@@ -133,17 +134,12 @@
         </div>
         <div class="chat-messages" id="chat-messages"></div>
         <div class="chat-input">
-            <form id="chat-form" style="width: 100%;">
-                <input type="text" id="user-input" name="user-input" placeholder="Type your message..." autocomplete="off">
+            <form id="chat-form">
+                <textarea id="user-input" name="user-input" placeholder="Type your message..." autocomplete="off"></textarea>
                 <button type="submit" id="submit-button">Send</button>
             </form>
         </div>
     </div>
-
-    <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
-    <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
-    <script src="https://cdn.socket.io/4.7.1/socket.io.min.js"></script>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/dompurify/3.0.5/purify.min.js"></script>
 
     <script>
         $(document).ready(function () {
@@ -176,7 +172,15 @@
                     if (index >= htmlMessage.length) {
                         clearInterval(typingInterval);
                     }
-                }, 2); // Adjust typing speed here
+                }, 1); 
+            });
+
+            // Handle textarea submissions (Enter key)
+            $("#user-input").keydown(function(e) {
+                if (e.key === "Enter" && !e.shiftKey) {
+                    e.preventDefault();
+                    $("#chat-form").submit();
+                }
             });
 
             $("#chat-form").submit(function (e) {
