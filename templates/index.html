@@ -1,83 +1,110 @@
 <!DOCTYPE html>
-<html>
+<html lang="en">
 <head>
+    <meta charset="UTF-8">
     <title>Chat with AI</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
     <style>
         body {
             margin: 0;
             font-family: sans-serif;
+            background-color: #f0f0f0;
+            display: flex;
+            flex-direction: column;
+            min-height: 100vh; /* Ensure full viewport height */
         }
 
         .chat-container {
+            flex: 1; /* Allow chat container to expand */
             display: flex;
             flex-direction: column;
-            height: 100vh;
+            box-shadow: 0 0 10px rgba(0, 0, 0, 0.1); /* Add shadow */
+            border-radius: 10px; /* Round corners */
+            overflow: hidden; /* Hide overflowing content */
         }
-
         .chat-header {
             background-color: #007bff;
             color: white;
-            padding: 10px;
+            padding: 15px;
             text-align: center;
+            border-top-left-radius: 10px;
+            border-top-right-radius: 10px;
+            box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
         }
 
         .chat-messages {
             flex: 1;
-            padding: 10px;
-            overflow-y: auto; /* Important for scrolling */
-            max-height: calc(100vh - 100px); /* Sets maximum height for scrolling */
+            padding: 20px;
+            overflow-y: auto;
+            background-image: url("data:image/svg+xml,%3Csvg width='60' height='60' viewBox='0 0 60 60' xmlns='http://www.w3.org/2000/svg'%3E%3Cg fill='%23e3e3e3' fill-opacity='0.4' fill-rule='evenodd'%3E%3Cpath d='M15 15h30v30H15V15zm0 45h30v30H15v-30zM45 15h30v30H45V15zm0 45h30v30H45v-30z'/%3E%3C/g%3E%3C/svg%3E"); /* subtle background pattern */
         }
 
+
         .message {
-            margin-bottom: 10px;
-            padding: 8px;
-            border-radius: 5px;
+            margin-bottom: 15px;
+            padding: 10px 15px;
+            border-radius: 10px;
             max-width: 70%;
             word-break: break-word;
-            white-space: pre-wrap; /* Important for preserving formatting */
+            white-space: pre-wrap;
+            box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
         }
 
         .user-message {
-            background-color: #e9ecef;
+            background-color: #dcf8c6; /* Lighter user message color */
             align-self: flex-end;
         }
 
         .ai-message {
-            background-color: #007bff;
-            color: white;
+            background-color: #ffffff;
+            color: #000; /* Darker AI message text */
             align-self: flex-start;
         }
 
         .chat-input {
             display: flex;
-            padding: 10px;
-            background-color: #f8f9fa;
+            padding: 15px;
+            background-color: #ffffff;
+            border-bottom-left-radius: 10px;
+            border-bottom-right-radius: 10px;
+            box-shadow: 0 -2px 5px rgba(0, 0, 0, 0.1);
         }
 
         #user-input {
             flex: 1;
-            padding: 8px;
+            padding: 10px;
             border: 1px solid #ced4da;
             border-radius: 5px;
+            font-size: 16px; /* Larger font size */
         }
+
 
         #submit-button {
             background-color: #007bff;
             color: white;
             border: none;
-            padding: 8px 15px;
+            padding: 10px 20px;
             margin-left: 10px;
             border-radius: 5px;
             cursor: pointer;
+            font-size: 16px; /* Larger font size */
+            transition: background-color 0.3s; /* Smooth transition */
         }
+        #submit-button:hover{
+            background-color: #0056b3;
+        }
+
 
         .error-message {
             color: red;
             margin-bottom: 10px;
         }
     </style>
+
+
     <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
     <script src="https://cdn.socket.io/4.7.1/socket.io.min.js"></script>
+
 </head>
 <body>
     <div class="chat-container">
@@ -87,40 +114,45 @@
         <div class="chat-messages" id="chat-messages"></div>
         <div class="chat-input">
             <form id="chat-form">
-                <input type="text" id="user-input" name="user-input" placeholder="Type your message...">
+                <input type="text" id="user-input" name="user-input" placeholder="Type your message..." autocomplete="off">
                 <button type="submit" id="submit-button">Send</button>
             </form>
         </div>
     </div>
-    <script>
-        $(document).ready(function () {
-            const socket = io(); // Connect to the Socket.IO server
 
-            const chatMessages = $("#chat-messages");
-            const userInput = $("#user-input");
-            let currentRoom = null; // Variable to store the client's roo
-            socket.on('room', function(data) {
-                currentRoom = data.room;
-                console.log("Joined room:", currentRoom);
-            });
+<script>
+    $(document).ready(function () {
+        const socket = io();
+        const chatMessages = $("#chat-messages");
+        const userInput = $("#user-input");
+        let currentRoom = null;
 
-            socket.on('message', function(data) {
-                chatMessages.append(`<div class="message ai-message">${data.message}</div>`);
-                chatMessages.scrollTop(chatMessages[0].scrollHeight);
-            });
 
-            $("#chat-form").submit(function (e) {
-                e.preventDefault();
-                const message = userInput.val();
-                if (message) {
-                    // Send the message to the client's room
-                    socket.emit('message', {'message': message, 'room': currentRoom}); 
-                    userInput.val("");
-                    chatMessages.append(`<div class="message user-message">${message}</div>`);
-                    chatMessages.scrollTop(chatMessages[0].scrollHeight);
-                }
-            });
+        socket.on('room', function(data) {
+            currentRoom = data.room;
+            console.log("Joined room:", currentRoom);
         });
-    </script>
+
+        socket.on('message', function(data) {
+
+            // Sanitize server messages to prevent XSS
+            const sanitizedMessage = $("<div>").text(data.message).html(); 
+            chatMessages.append(`<div class="message ai-message">${sanitizedMessage}</div>`);
+
+            chatMessages.scrollTop(chatMessages[0].scrollHeight);
+        });
+
+        $("#chat-form").submit(function (e) {
+            e.preventDefault();
+            const message = userInput.val();
+            if (message) {
+                socket.emit('message', {'message': message, 'room': currentRoom});
+                userInput.val("");
+                chatMessages.append(`<div class="message user-message">${message}</div>`); // No sanitization needed for user input on display
+                chatMessages.scrollTop(chatMessages[0].scrollHeight);
+            }
+        });
+    });
+</script>
 </body>
 </html>
