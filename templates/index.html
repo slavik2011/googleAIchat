@@ -11,17 +11,18 @@
             background-color: #f0f0f0;
             display: flex;
             flex-direction: column;
-            min-height: 100vh; /* Ensure full viewport height */
+            min-height: 100vh;
         }
 
         .chat-container {
-            flex: 1; /* Allow chat container to expand */
+            flex: 1;
             display: flex;
             flex-direction: column;
-            box-shadow: 0 0 10px rgba(0, 0, 0, 0.1); /* Add shadow */
-            border-radius: 10px; /* Round corners */
-            overflow: hidden; /* Hide overflowing content */
+            box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);
+            border-radius: 10px;
+            overflow: hidden;
         }
+
         .chat-header {
             background-color: #007bff;
             color: white;
@@ -36,9 +37,8 @@
             flex: 1;
             padding: 20px;
             overflow-y: auto;
-            background-image: url("data:image/svg+xml,%3Csvg width='60' height='60' viewBox='0 0 60 60' xmlns='http://www.w3.org/2000/svg'%3E%3Cg fill='%23e3e3e3' fill-opacity='0.4' fill-rule='evenodd'%3E%3Cpath d='M15 15h30v30H15V15zm0 45h30v30H15v-30zM45 15h30v30H45V15zm0 45h30v30H45v-30z'/%3E%3C/g%3E%3C/svg%3E"); /* subtle background pattern */
+            background-image: url("data:image/svg+xml,%3Csvg width='60' height='60' viewBox='0 0 60 60' xmlns='http://www.w3.org/2000/svg'%3E%3Cg fill='%23e3e3e3' fill-opacity='0.4' fill-rule='evenodd'%3E%3Cpath d='M15 15h30v30H15V15zm0 45h30v30H15v-30zM45 15h30v30H45V15zm0 45h30v30H45v-30z'/%3E%3C/g%3E%3C/svg%3E");
         }
-
 
         .message {
             margin-bottom: 15px;
@@ -51,60 +51,77 @@
         }
 
         .user-message {
-            background-color: #dcf8c6; /* Lighter user message color */
+            background-color: #dcf8c6;
             align-self: flex-end;
         }
 
         .ai-message {
             background-color: #ffffff;
-            color: #000; /* Darker AI message text */
+            color: #000;
             align-self: flex-start;
         }
 
         .chat-input {
             display: flex;
-            padding: 15px;
+            width: 100%;
+            box-sizing: border-box;
             background-color: #ffffff;
             border-bottom-left-radius: 10px;
             border-bottom-right-radius: 10px;
             box-shadow: 0 -2px 5px rgba(0, 0, 0, 0.1);
+            padding: 10px;
         }
 
         #user-input {
             flex: 1;
-            padding: 10px;
+            padding: 15px;
             border: 1px solid #ced4da;
             border-radius: 5px;
-            font-size: 16px; /* Larger font size */
+            font-size: 1.2rem;
+            box-sizing: border-box;
+            min-height: 50px;
         }
-
 
         #submit-button {
             background-color: #007bff;
             color: white;
             border: none;
-            padding: 10px 20px;
+            padding: 15px 25px;
             margin-left: 10px;
             border-radius: 5px;
             cursor: pointer;
-            font-size: 16px; /* Larger font size */
-            transition: background-color 0.3s; /* Smooth transition */
+            font-size: 1.2rem;
+            transition: background-color 0.3s;
+            box-sizing: border-box;
+            min-height: 50px;
         }
         #submit-button:hover{
             background-color: #0056b3;
         }
 
-
         .error-message {
             color: red;
             margin-bottom: 10px;
         }
+
+        .typing-indicator {
+            font-style: italic;
+            color: #999;
+        }
+
+        @media (max-width: 768px) {
+            #user-input,
+            #submit-button {
+                font-size: 1rem;
+                padding: 10px 15px;
+                min-height: 40px;
+            }
+        }
     </style>
     <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
-    <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>  <!-- Marked.js -->
+    <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
     <script src="https://cdn.socket.io/4.7.1/socket.io.min.js"></script>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/dompurify/3.0.5/purify.min.js"></script> <!-- DOMPurify -->
-
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/dompurify/3.0.5/purify.min.js"></script>
 </head>
 <body>
     <div class="chat-container">
@@ -120,45 +137,51 @@
         </div>
     </div>
 
-<script>
-    $(document).ready(function () {
-        const socket = io();
-        const chatMessages = $("#chat-messages");
-        const userInput = $("#user-input");
-        let currentRoom = null;
+    <script>
+        $(document).ready(function () {
+            const socket = io();
+            const chatMessages = $("#chat-messages");
+            const userInput = $("#user-input");
+            let currentRoom = null;
+            let typingTimer;
+            const doneTypingInterval = 500;
+            let isTyping = false;
 
-        socket.on('room', function(data) {
-            currentRoom = data.room;
-            console.log("Joined room:", currentRoom);
+            socket.on('room', function (data) {
+                currentRoom = data.room;
+                console.log("Joined room:", currentRoom);
+            });
+
+            socket.on('message', function (data) {
+                if (!isTyping) {
+                    chatMessages.append('<div class="message ai-message typing-indicator">AI is typing...</div>');
+                    chatMessages.scrollTop(chatMessages[0].scrollHeight);
+                    isTyping = true;
+                }
+
+                clearTimeout(typingTimer);
+                typingTimer = setTimeout(function () {
+                    $('.typing-indicator').remove();
+
+                    let sanitizedMessage = DOMPurify.sanitize(data.message);
+                    const htmlMessage = marked.parse(sanitizedMessage);
+                    chatMessages.append(`<div class="message ai-message">${htmlMessage}</div>`);
+                    chatMessages.scrollTop(chatMessages[0].scrollHeight);
+                    isTyping = false;
+                }, doneTypingInterval);
+            });
+
+            $("#chat-form").submit(function (e) {
+                e.preventDefault();
+                const message = userInput.val();
+                if (message) {
+                    socket.emit('message', { 'message': message, 'room': currentRoom });
+                    userInput.val("");
+                    chatMessages.append(`<div class="message user-message">${message}</div>`);
+                    chatMessages.scrollTop(chatMessages[0].scrollHeight);
+                }
+            });
         });
-
-        socket.on('message', function(data) {
-            // 1. Sanitize (CRUCIAL for security):
-             let sanitizedMessage = DOMPurify.sanitize(data.message);
-
-
-            // 2. Parse the Markdown to HTML:
-            const htmlMessage = marked.parse(sanitizedMessage);
-
-
-            // 3. Add the HTML to the chat:
-            chatMessages.append(`<div class="message ai-message">${htmlMessage}</div>`);
-            chatMessages.scrollTop(chatMessages[0].scrollHeight);
-        });
-
-        $("#chat-form").submit(function (e) {
-            e.preventDefault();
-            const message = userInput.val();
-            if (message) {
-                socket.emit('message', {'message': message, 'room': currentRoom});
-                userInput.val("");
-
-                // Display user's message (no need to parse Markdown for user input):
-                chatMessages.append(`<div class="message user-message">${message}</div>`); // User message (no markdown parsing)
-                chatMessages.scrollTop(chatMessages[0].scrollHeight);
-            }
-        });
-    });
-</script>
+    </script>
 </body>
 </html>
