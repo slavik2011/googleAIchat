@@ -4,6 +4,7 @@ from flask import Flask, render_template, request, redirect, url_for, session
 from flask_socketio import SocketIO, emit, join_room, leave_room
 import uuid
 import sys
+from google.generativeai.types import HarmCategory, HarmBlockThreshold
 
 app = Flask(__name__)
 app.secret_key = os.urandom(128)  # Set a secret key for session management
@@ -87,7 +88,13 @@ def handle_message(data):
             return
 
         content = {"parts": [{"text": user_input}]}
-        response = chat_session.send_message(content)
+        response = chat_session.send_message(content,
+    safety_settings={
+        HarmCategory.HARM_CATEGORY_HATE_SPEECH: HarmBlockThreshold.BLOCK_NONE,
+        HarmCategory.HARM_CATEGORY_HARASSMENT: HarmBlockThreshold.BLOCK_NONE,
+        HarmCategory.HARM_CATEGORY_SEXUALLY_EXPLICIT: HarmBlockThreshold.BLOCK_NONE,
+        HarmCategory.HARM_CATEGORY_DANGEROUS_CONTENT: HarmBlockThreshold.BLOCK_NONE,
+    })
 
         if not response:
             emit('message', {'message': 'Error receiving response from the AI model. Ask website developer to fix that'}, room=room_id)
