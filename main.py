@@ -6,7 +6,7 @@ import uuid
 import sys
 
 app = Flask(__name__)
-app.secret_key = os.urandom(24)  # Set a secret key for session management
+app.secret_key = os.urandom(128)  # Set a secret key for session management
 socketio = SocketIO(app)
 
 # Set up your Google Generative AI API key
@@ -76,21 +76,21 @@ def handle_message(data):
     room_id = client_rooms.get(client_id)  # Get room ID from the dictionary
 
     if not room_id:
-        emit('message', {'message': 'Error: Client not assigned to a room.'}, room=client_id)
+        emit('message', {'message': 'Error: Client not assigned to a room. Try refreshing the page'}, room=client_id)
         return
 
     try:
         # Get the chat session for the room
         chat_session = chat_sessions.get(room_id) 
         if not chat_session:
-            emit('message', {'message': 'Error: No chat session found for this room.'}, room=client_id)
+            emit('message', {'message': 'Error: No chat session found for this room. Try refreshing the page'}, room=client_id)
             return
 
         content = {"parts": [{"text": user_input}]}
         response = chat_session.send_message(content)
 
         if not response:
-            emit('message', {'message': 'Error receiving response from the AI model.'}, room=room_id)
+            emit('message', {'message': 'Error receiving response from the AI model. Ask website developer to fix that'}, room=room_id)
             return
 
         # Extract the response text (access the first part)
