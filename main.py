@@ -22,8 +22,6 @@ genai.configure(api_key=API_KEY)
 # Configuration for the model (you might want to adjust these)
 generation_config = {
     "temperature": 1,  # Adjust for desired creativity
-    "top_p": 0.95,
-    "top_k": 64,
     "max_output_tokens": 8192,  # Adjust as needed
     "response_mime_type": "text/plain",
 }
