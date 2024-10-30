@@ -7,7 +7,7 @@ import sys
 from google.generativeai.types import HarmCategory, HarmBlockThreshold
 
 app = Flask(__name__)
-app.secret_key = os.urandom(64)  # Set a secret key for session management
+app.secret_key = os.urandom(128)  # Set a secret key for session management
 socketio = SocketIO(app)
 
 # Set up your Google Generative AI API key
