@@ -27,7 +27,7 @@ generation_config = {
 }
 
 model = genai.GenerativeModel(
-    model_name="gemini-pro",  # Replace with your desired model
+    model_name="gemini-1.5-flash",  # Replace with your desired model
     generation_config=generation_config,
     #system_instruction="Respond in a concise and informative manner.",
 )
