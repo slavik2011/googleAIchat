@@ -21,13 +21,13 @@ genai.configure(api_key=API_KEY)
 
 # Configuration for the model (you might want to adjust these)
 generation_config = {
-    "temperature": 1,  # Adjust for desired creativity
+    "temperature": 0.7,  # Adjust for desired creativity
     "max_output_tokens": 8192,  # Adjust as needed
     "response_mime_type": "text/plain",
 }
 
 model = genai.GenerativeModel(
-    model_name="gemini-1.5-pro-0002",  # Replace with your desired model
+    model_name="gemini-1.5-pro",  # Replace with your desired model
     generation_config=generation_config,
     #system_instruction="Respond in a concise and informative manner.",
 )
